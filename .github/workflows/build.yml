@@ -1,0 +1,37 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Compilar
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk M17Tuner.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: M17Tuner-apk
+          path: M17Tuner.apk
+      - name: Publicar en Releases (para descargar desde el móvil)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest -y --cleanup-tag || true
+          gh release create latest M17Tuner.apk \
+            --title "M17 Tuner (última versión)" \
+            --notes "APK compilado automáticamente desde ${GITHUB_SHA::7}. Descarga M17Tuner.apk e instálalo en el móvil."
